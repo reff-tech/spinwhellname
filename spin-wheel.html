@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spin the Wheel</title>
+<style>
+:root{--bg:#0a0d14;--card:#121826;--line:#232d42;--text:#eef2f9;--mute:#8793a8;--a:#3de0ff;--b:#a77bff;--grad:linear-gradient(90deg,var(--a),var(--b))}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:radial-gradient(700px 400px at 50% -10%,rgba(167,123,255,.18),transparent),var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+header{text-align:center;padding:18px 14px 6px}
+header h1{font-size:clamp(24px,6vw,36px);letter-spacing:.04em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+header p{color:var(--mute);font-size:14px;margin-top:2px}
+.wrap{max-width:1000px;margin:auto;padding:14px;display:grid;gap:18px;grid-template-columns:1fr}
+.stage{position:relative;width:100%;max-width:520px;margin:auto;aspect-ratio:1}
+canvas{width:100%;height:100%;display:block;border-radius:50%;cursor:pointer;filter:drop-shadow(0 0 22px rgba(61,224,255,.25))}
+.ptr{position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-top:34px solid #fff;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));z-index:2}
+.hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:23%;aspect-ratio:1;border-radius:50%;border:5px solid #fff;background:var(--grad);color:#06101a;font-weight:800;font-size:clamp(13px,3.6vw,20px);cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.5)}
+.hub:active{transform:translate(-50%,-50%) scale(.96)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px}
+.panel h2{font-size:17px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.panel h2 small{color:var(--mute);font-weight:400;font-size:13px}
+textarea{width:100%;height:210px;resize:vertical;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:12px;color:var(--text);font:inherit;padding:12px;line-height:1.6}
+textarea:focus{outline:2px solid var(--a)}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0}
+button.b{border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);border-radius:10px;padding:9px 14px;font-weight:600;font-size:14px;cursor:pointer}
+button.b.p{background:var(--grad);color:#06101a;border:0}
+.hist{margin-top:14px;max-height:180px;overflow:auto}
+.hist div{display:flex;justify-content:space-between;padding:7px 2px;border-bottom:1px solid var(--line);font-size:14px}
+.hist span{color:var(--mute)}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:30;padding:16px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:26px 22px;text-align:center;width:100%;max-width:360px;animation:pop .3s ease}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}
+.box small{color:var(--mute)}
+.box h3{font-size:clamp(26px,8vw,38px);margin:10px 0 18px;word-break:break-word;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.box .btns{justify-content:center}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#fff;color:#111;padding:9px 16px;border-radius:99px;font-size:14px;font-weight:600;opacity:0;transition:.3s;pointer-events:none;z-index:40}
+@media(min-width:800px){.wrap{grid-template-columns:1.1fr 1fr;align-items:start}}
+@media(prefers-reduced-motion:reduce){.box{animation:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Spin the Wheel</h1>
+  <p>Isi nama atau pilihan, lalu putar rodanya.</p>
+</header>
+
+<div class="wrap">
+  <div class="stage">
+    <div class="ptr"></div>
+    <canvas id="wheel" aria-label="Roda putar"></canvas>
+    <button class="hub" id="hub" aria-label="Putar roda">SPIN</button>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>Entri <small id="cnt">0 entri</small></h2>
+      <textarea id="ta" placeholder="Satu entri per baris" spellcheck="false"></textarea>
+      <div class="btns">
+        <button class="b p" id="bSpin">Putar</button>
+        <button class="b" id="bShuf">Acak urutan</button>
+        <button class="b" id="bSort">A–Z</button>
+        <button class="b" id="bClear">Kosongkan</button>
+        <button class="b" id="bMute">🔊 Suara</button>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h2>Hasil <small><a href="#" id="bHClr" style="color:var(--mute)">hapus riwayat</a></small></h2>
+      <div class="hist" id="hist"></div>
+    </div>
+  </div>
+</div>
+
+<div id="modal"><div class="box">
+  <small>Pemenangnya</small>
+  <h3 id="wname"></h3>
+  <div class="btns">
+    <button class="b" id="mRemove">Hapus dari roda</button>
+    <button class="b p" id="mClose">Tutup</button>
+  </div>
+</div></div>
+<div id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}};
+const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+const TAU=Math.PI*2, S=600, R=S/2;
+const COL=["#ef476f","#ffd166","#06d6a0","#118ab2","#9b5de5","#f78c6b","#3dd6d0","#8ac926"];
+
+const cv=$("#wheel"), ctx=cv.getContext("2d");
+cv.width=cv.height=S;
+
+let entries=load("wEntries",["Ali","Budi","Citra","Dewi","Eko","Fani","Gita","Hadi"]);
+let hist=load("wHist",[]);
+let angle=0, spinning=false, muted=load("wMute",false), lastWinner=-1;
+
+const parse=()=>$("#ta").value.split("\n").map(s=>s.trim()).filter(Boolean);
+const toast=m=>{const t=$("#toast");t.textContent=m;t.style.opacity=1;setTimeout(()=>t.style.opacity=0,1800)};
+
+function colorOf(i,n){let c=i%COL.length;if(i===n-1&&n>1&&c===0)c=2;return COL[c]}
+
+function draw(){
+  ctx.clearRect(0,0,S,S);
+  const n=entries.length;
+  if(!n){
+    ctx.beginPath();ctx.arc(R,R,R-8,0,TAU);ctx.fillStyle="#1b2437";ctx.fill();
+    ctx.fillStyle="#8793a8";ctx.font="bold 28px system-ui";ctx.textAlign="center";
+    ctx.fillText("Tambahkan entri",R,R+10);return;
+  }
+  const s=TAU/n;
+  for(let i=0;i<n;i++){
+    const a0=angle+i*s;
+    ctx.beginPath();ctx.moveTo(R,R);ctx.arc(R,R,R-8,a0,a0+s);ctx.closePath();
+    ctx.fillStyle=colorOf(i,n);ctx.fill();
+    ctx.strokeStyle="rgba(0,0,0,.25)";ctx.lineWidth=2;ctx.stroke();
+
+    // teks
+    ctx.save();ctx.translate(R,R);ctx.rotate(a0+s/2);
+    ctx.textAlign="right";ctx.fillStyle="#fff";
+    ctx.shadowColor="rgba(0,0,0,.55)";ctx.shadowBlur=4;
+    let fs=Math.max(11,Math.min(30,s*R*0.5)),label=entries[i],maxW=R-100;
+    ctx.font=`700 ${fs}px system-ui,sans-serif`;
+    while(ctx.measureText(label).width>maxW&&fs>11){fs--;ctx.font=`700 ${fs}px system-ui,sans-serif`}
+    while(ctx.measureText(label).width>maxW&&label.length>2)label=label.slice(0,-2);
+    if(label!==entries[i])label=label.trimEnd()+"…";
+    ctx.fillText(label,R-30,fs*0.35);
+    ctx.restore();
+  }
+  ctx.beginPath();ctx.arc(R,R,R-8,0,TAU);ctx.lineWidth=8;ctx.strokeStyle="#fff";ctx.stroke();
+}
+
+// indeks irisan yang berada di bawah penunjuk (atas)
+function current(){
+  const n=entries.length,s=TAU/n;
+  const a=((-Math.PI/2-angle)%TAU+TAU)%TAU;
+  return Math.floor(a/s)%n;
+}
+
+// suara
+let ac=null;
+function beep(f,d,v=.08,type="square"){
+  if(muted||!ac)return;
+  const o=ac.createOscillator(),g=ac.createGain();
+  o.type=type;o.frequency.value=f;g.gain.value=v;
+  o.connect(g);g.connect(ac.destination);
+  o.start();g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.stop(ac.currentTime+d);
+}
+const tick=()=>beep(900,.04);
+const fanfare=()=>[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.25,.1,"triangle"),i*130));
+
+function spin(){
+  if(spinning)return;
+  if(entries.length<2){toast("Minimal 2 entri");return}
+  try{ac=ac||new (window.AudioContext||window.webkitAudioContext)()}catch(e){}
+  spinning=true;$("#ta").readOnly=true;
+  const start=angle,total=(6+Math.random()*3)*TAU+Math.random()*TAU,
+        dur=5000+Math.random()*1500,t0=performance.now();
+  let last=current();
+  (function frame(now){
+    const t=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-t,4);
+    angle=start+total*e;
+    const idx=current();if(idx!==last){tick();last=idx}
+    draw();
+    if(t<1)requestAnimationFrame(frame);
+    else{spinning=false;$("#ta").readOnly=false;angle%=TAU;win(current())}
+  })(t0);
+}
+
+function win(i){
+  lastWinner=i;
+  $("#wname").textContent=entries[i];
+  $("#modal").style.display="flex";
+  fanfare();
+  hist.unshift({n:entries[i],t:new Date().toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"})});
+  hist=hist.slice(0,30);save("wHist",hist);renderHist();
+}
+
+function renderHist(){
+  $("#hist").innerHTML=hist.length?hist.map(h=>`<div>${h.n.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}<span>${h.t}</span></div>`).join(""):'<div><span>Belum ada hasil.</span></div>';
+}
+
+function sync(fromText){
+  if(fromText)entries=parse();
+  else $("#ta").value=entries.join("\n");
+  save("wEntries",entries);
+  $("#cnt").textContent=entries.length+" entri";
+  draw();
+}
+
+// event
+$("#ta").addEventListener("input",()=>sync(true));
+$("#hub").onclick=spin;
+$("#bSpin").onclick=spin;
+cv.onclick=spin;
+$("#bShuf").onclick=()=>{if(spinning)return;
+  for(let i=entries.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[entries[i],entries[j]]=[entries[j],entries[i]]}
+  sync(false)};
+$("#bSort").onclick=()=>{if(spinning)return;entries.sort((a,b)=>a.localeCompare(b,"id"));sync(false)};
+$("#bClear").onclick=()=>{if(spinning)return;if(confirm("Kosongkan semua entri?")){entries=[];sync(false)}};
+$("#bMute").onclick=()=>{muted=!muted;save("wMute",muted);$("#bMute").textContent=muted?"🔇 Senyap":"🔊 Suara"};
+$("#bHClr").onclick=e=>{e.preventDefault();hist=[];save("wHist",hist);renderHist()};
+$("#mClose").onclick=()=>$("#modal").style.display="none";
+$("#mRemove").onclick=()=>{entries.splice(lastWinner,1);$("#modal").style.display="none";sync(false)};
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape")$("#modal").style.display="none";
+  if(e.key==="Enter"&&e.ctrlKey)spin();
+});
+
+$("#bMute").textContent=muted?"🔇 Senyap":"🔊 Suara";
+sync(false);renderHist();
+</script>
+</body>
+</html>
